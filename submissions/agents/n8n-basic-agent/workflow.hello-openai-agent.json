@@ -1,0 +1,96 @@
+{
+  "name": "Hello OpenAI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hello-agent",
+        "responseMode": "responseNode"
+      },
+      "id": "Webhook_hello_agent",
+      "name": "Webhook (POST /hello-agent)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [ 260, 300 ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "method": "POST",
+        "sendBody": true,
+        "jsonParameters": true,
+        "options": {"responseFormat": "json"},
+        "headerParametersJson": "{\"Content-Type\":\"application/json\",\"Authorization\":\"Bearer {{$env.OPENAI_API_KEY}}\"}",
+        "bodyParametersJson": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"system\", \"content\": \"You are a concise, helpful agent. Answer briefly.\"},\n    {\"role\": \"user\", \"content\": \"{{$json.question || 'Say hello'}}\"}\n  ]\n}"
+      },
+      "id": "HTTP_to_OpenAI",
+      "name": "HTTP Request → OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [ 560, 300 ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: {\n  answer: $json?.choices?.[0]?.message?.content ?? 'No answer'\n}}];"
+      },
+      "id": "Function_map_answer",
+      "name": "Function (map answer)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [ 840, 300 ]
+    },
+    {
+      "parameters": {
+        "responseBody": "={{ {\"answer\": $json.answer } }}",
+        "responseCode": 200,
+        "options": {
+          "responseDataInPropertyName": false
+        }
+      },
+      "id": "Respond_to_Webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [ 1100, 300 ]
+    }
+    ],
+  "connections": {
+    "Webhook (POST /hello-agent)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request → OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request → OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Function (map answer)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function (map answer)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "staticData": {},
+  "pinData": {}
+}
